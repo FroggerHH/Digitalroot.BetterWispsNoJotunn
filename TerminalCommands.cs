@@ -1,5 +1,4 @@
 ﻿using System;
-using Extensions;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -28,7 +27,6 @@ public static class TerminalCommands
                         if (!configSync.IsAdmin && !ZNet.instance.IsServer())
                         {
                             args.Context.AddString("You are not an admin on this server.");
-                            return;
                         }
                     }
                     catch (Exception e)

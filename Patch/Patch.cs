@@ -1,43 +1,41 @@
 using System;
 using System.Linq;
-using Extensions;
 using HarmonyLib;
-using UnityEngine;
-using static BetterWispsNoJotunn.Plugin;
-using System.Reflection;
 using JetBrains.Annotations;
+using static BetterWispsNoJotunn.Plugin;
 
-namespace BetterWispsNoJotunn
+namespace BetterWispsNoJotunn;
+
+[UsedImplicitly]
+public class Patch
 {
     [UsedImplicitly]
-    public class Patch
+    [HarmonyPatch(typeof(Demister))]
+    public static class PatchDemisterOnEnable
     {
-        [UsedImplicitly, HarmonyPatch(typeof(Demister))]
-        public static class PatchDemisterOnEnable
+        [HarmonyPostfix]
+        [HarmonyPriority(Priority.Normal)]
+        [HarmonyPatch(typeof(Demister), nameof(Demister.OnEnable))]
+        public static void Postfix([NotNull] ref Demister __instance)
         {
-            [HarmonyPostfix, HarmonyPriority(Priority.Normal),
-             HarmonyPatch(typeof(Demister), nameof(Demister.OnEnable))]
-            public static void Postfix([NotNull] ref Demister __instance)
+            try
             {
-                try
-                {
-                    if (!Game.instance) return;
-                    if (!ObjectDB.instance) return;
-                    if (!ZNetScene.instance) return;
-                    if (!Player.m_localPlayer) return;
+                if (!Game.instance) return;
+                if (!ObjectDB.instance) return;
+                if (!ZNetScene.instance) return;
+                if (!Player.m_localPlayer) return;
 
-                    var itemData = Player.m_localPlayer.GetInventory().GetEquippedItems()
-                        .FirstOrDefault(i => i.m_dropPrefab.name == "Demister");
+                var itemData = Player.m_localPlayer.GetInventory().GetEquippedItems()
+                    .FirstOrDefault(i => i.m_dropPrefab.name == "Demister");
 
-                    if (!__instance.isActiveAndEnabled || itemData == null) return;
-                    __instance.m_forceField.endRange = baseRange + (increasedRangePerLevel * (itemData.m_quality - 1));
+                if (!__instance.isActiveAndEnabled || itemData == null) return;
+                __instance.m_forceField.endRange = baseRange + increasedRangePerLevel * (itemData.m_quality - 1);
 
-                    Debug($"Updated {itemData.m_dropPrefab.name} range to {__instance.m_forceField.endRange}.");
-                }
-                catch (Exception ex)
-                {
-                    DebugError(ex, false);
-                }
+                Debug($"Updated {itemData.m_dropPrefab.name} range to {__instance.m_forceField.endRange}.");
+            }
+            catch (Exception ex)
+            {
+                DebugError(ex, false);
             }
         }
     }

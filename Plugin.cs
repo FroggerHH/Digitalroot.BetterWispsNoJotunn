@@ -1,37 +1,26 @@
-﻿using BepInEx;
-using BepInEx.Configuration;
-using HarmonyLib;
-using JetBrains.Annotations;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using BepInEx;
+using BepInEx.Configuration;
+using HarmonyLib;
 using ServerSync;
-using UnityEngine;
 
 namespace BetterWispsNoJotunn;
 
 [BepInPlugin(ModGUID, ModName, ModVersion)]
 internal class Plugin : BaseUnityPlugin
 {
-    #region values
-
-    internal const string ModName = "Digitalroot.Frogger.BetterWispsNoJotunn", ModVersion = "1.1.0", ModGUID = "com." + ModName;
-    internal static Plugin _self;
-
-    #endregion
-
     private void Awake()
     {
         _self = this;
 
         Config.SaveOnConfigSet = false;
-        
+
         configSync.AddLockingConfigEntry(config("Main", "Lock Configuration", true,
             "If on, the configuration is locked and can be changed by server admins only."));
-        
+
         baseRangeConfig = config("General", "Base Range", 15f,
             new ConfigDescription("Base clear range of the Wisp Light.", new AcceptableValueRange<float>(0f, 100f),
                 new ConfigurationManagerAttributes { Order = 11 }));
@@ -57,9 +46,56 @@ internal class Plugin : BaseUnityPlugin
         Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), ModGUID);
     }
 
+    private static void UpdateWisp()
+    {
+        try
+        {
+            foreach (var recipe in ObjectDB.instance.m_recipes.Where(r => r.m_item?.name == "Demister"))
+            {
+                var wispRequirement =
+                    recipe.m_resources.FirstOrDefault(r => r.m_resItem.name == "Wisp");
+                if (wispRequirement != null) wispRequirement.m_amountPerLevel = wispsPerLevel;
+                Debug($"Updated {recipe.m_item.name} of {recipe.name}, " +
+                      $"set {wispRequirement?.m_resItem.name} m_amountPerLevel " +
+                      $"to {wispRequirement?.m_amountPerLevel}");
+
+                var silverRequirement = recipe.m_resources.FirstOrDefault(r =>
+                    r.m_resItem = ObjectDB.instance.GetItemPrefab("Silver").GetComponent<ItemDrop>());
+                if (silverRequirement != null) silverRequirement.m_amountPerLevel = silverPerLevel;
+                Debug($"Updated {recipe.m_item.name} of {recipe.name}, " +
+                      $"set {silverRequirement?.m_resItem.name} m_amountPerLevel " +
+                      $"to {silverRequirement?.m_amountPerLevel}");
+            }
+
+            var wispLight = ObjectDB.instance.GetItemPrefab("Demister");
+            var itemDrop = wispLight?.GetComponent<ItemDrop>();
+
+            if (!itemDrop) return;
+            itemDrop.m_itemData.m_shared.m_maxQuality = maxLevel;
+            Debug($"Updated {wispLight.name} set m_maxQuality to {itemDrop.m_itemData.m_shared.m_maxQuality}");
+        }
+        catch (Exception e)
+        {
+            DebugError(e, false);
+        }
+    }
+
+    #region values
+
+    internal const string ModName = "Digitalroot.Frogger.BetterWispsNoJotunn",
+        ModVersion = "1.1.0",
+        ModGUID = "com." + ModName;
+
+    internal static Plugin _self;
+
+    #endregion
+
     #region tools
 
-    public static void Debug(object msg) => _self.Logger.LogInfo(msg);
+    public static void Debug(object msg)
+    {
+        _self.Logger.LogInfo(msg);
+    }
 
     public static void DebugError(object msg, bool showWriteToDev = true)
     {
@@ -170,38 +206,4 @@ internal class Plugin : BaseUnityPlugin
     }
 
     #endregion
-
-    private static void UpdateWisp()
-    {
-        try
-        {
-            foreach (var recipe in ObjectDB.instance.m_recipes.Where(r => r.m_item?.name == "Demister"))
-            {
-                var wispRequirement =
-                    recipe.m_resources.FirstOrDefault(r => r.m_resItem.name == "Wisp");
-                if (wispRequirement != null) wispRequirement.m_amountPerLevel = wispsPerLevel;
-                Debug($"Updated {recipe.m_item.name} of {recipe.name}, " +
-                      $"set {wispRequirement?.m_resItem.name} m_amountPerLevel " +
-                      $"to {wispRequirement?.m_amountPerLevel}");
-
-                var silverRequirement = recipe.m_resources.FirstOrDefault(r =>
-                    r.m_resItem = ObjectDB.instance.GetItemPrefab("Silver").GetComponent<ItemDrop>());
-                if (silverRequirement != null) silverRequirement.m_amountPerLevel = silverPerLevel;
-                Debug($"Updated {recipe.m_item.name} of {recipe.name}, " +
-                      $"set {silverRequirement?.m_resItem.name} m_amountPerLevel " +
-                      $"to {silverRequirement?.m_amountPerLevel}");
-            }
-
-            var wispLight = ObjectDB.instance.GetItemPrefab("Demister");
-            var itemDrop = wispLight?.GetComponent<ItemDrop>();
-
-            if (!itemDrop) return;
-            itemDrop.m_itemData.m_shared.m_maxQuality = maxLevel;
-            Debug($"Updated {wispLight.name} set m_maxQuality to {itemDrop.m_itemData.m_shared.m_maxQuality}");
-        }
-        catch (Exception e)
-        {
-            DebugError(e, false);
-        }
-    }
 }
